@@ -30,13 +30,11 @@ def get_working_model(api_key):
     try:
         genai.configure(api_key=api_key)
         models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        
         best_model = next((m for m in models if 'flash' in m and 'legacy' not in m), None)
         if not best_model:
             best_model = next((m for m in models if 'pro' in m and 'legacy' not in m), None)
         if not best_model:
             best_model = "models/gemini-pro"
-            
         return best_model.replace("models/", "")
     except:
         return "gemini-pro"
@@ -53,7 +51,6 @@ if google_api_key and tavily_api_key:
     tools = [search_tool, calc_tool]
 
     valid_model_name = get_working_model(google_api_key)
-    st.toast(f"Using model: {valid_model_name}")
     
     llm = ChatGoogleGenerativeAI(model=valid_model_name, google_api_key=google_api_key)
     
@@ -63,7 +60,7 @@ if google_api_key and tavily_api_key:
         agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, 
         verbose=True,
         handle_parsing_errors=True,
-        max_iterations=3,
+        max_iterations=10,
         early_stopping_method="generate"
     )
 
@@ -81,8 +78,8 @@ if google_api_key and tavily_api_key:
                     f"Interests: {interests}. "
                     "1. Search for 3 hotels and flight costs. "
                     "2. Create a daily itinerary. "
-                    "3. Calculate total cost. "
-                    "STOP searching after you have basic info."
+                    "3. Calculate total cost in Indian Rupees (INR). "
+                    "IMPORTANT: You MUST provide a final answer with a full itinerary."
                 )
                 response = agent.run(prompt)
                 st.success("Trip Planned Successfully!")
