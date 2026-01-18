@@ -8,7 +8,6 @@ from langchain.tools import Tool
 st.set_page_config(page_title="AI Travel Agent", page_icon="🌎", layout="wide")
 
 st.title("🌎 AI Travel Planning Agent")
-st.markdown("### Plan your dream trip with budget & timeline constraints.")
 
 with st.sidebar:
     st.header("🔑 API Keys")
@@ -16,7 +15,6 @@ with st.sidebar:
     tavily_api_key = st.text_input("Tavily API Key", type="password")
     
     st.divider()
-    
     st.header("⚙️ Trip Settings")
     days = st.slider("Trip Duration (Days)", 1, 14, 5)
     budget_style = st.select_slider("Budget Style", options=["Backpacker", "Moderate", "Luxury"])
@@ -38,16 +36,18 @@ if google_api_key and tavily_api_key:
     )
     tools = [search_tool, calc_tool]
 
-    llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key)
+    # --- THIS LINE IS THE FIX ---
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key)
     
     agent = initialize_agent(
         tools, 
         llm, 
         agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, 
         verbose=True,
-        handle_parsing_errors=True
+        handle_parsing_errors=True,
+        max_iterations=3,
+        early_stopping_method="generate"
     )
-
 
     col1, col2 = st.columns(2)
     with col1:
@@ -60,11 +60,11 @@ if google_api_key and tavily_api_key:
             try:
                 prompt = (
                     f"Plan a {days}-day trip to {destination} for a traveler with a '{budget_style}' budget. "
-                    f"Their interests are: {interests}. "
-                    "1. USE SEARCH to find real hotels and flight prices for this location. "
-                    "2. Create a detailed day-by-day itinerary. "
-                    "3. USE CALCULATOR to sum up the estimated cost (Flights + Hotels + Daily Food). "
-                    "4. Give a final total cost estimate in USD."
+                    f"Interests: {interests}. "
+                    "1. Search for 3 hotels and flight costs. "
+                    "2. Create a daily itinerary. "
+                    "3. Calculate total cost. "
+                    "STOP searching after you have basic info."
                 )
                 response = agent.run(prompt)
                 st.success("Trip Planned Successfully!")
