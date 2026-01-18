@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain.agents import initialize_agent, AgentType
@@ -25,6 +26,21 @@ def budget_calculator(query):
     except:
         return "Error in calculation"
 
+def get_working_model(api_key):
+    try:
+        genai.configure(api_key=api_key)
+        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        best_model = next((m for m in models if 'flash' in m and 'legacy' not in m), None)
+        if not best_model:
+            best_model = next((m for m in models if 'pro' in m and 'legacy' not in m), None)
+        if not best_model:
+            best_model = "models/gemini-pro"
+            
+        return best_model.replace("models/", "")
+    except:
+        return "gemini-pro"
+
 if google_api_key and tavily_api_key:
     os.environ["TAVILY_API_KEY"] = tavily_api_key
     
@@ -36,8 +52,10 @@ if google_api_key and tavily_api_key:
     )
     tools = [search_tool, calc_tool]
 
-    # --- THIS LINE IS THE FIX ---
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key)
+    valid_model_name = get_working_model(google_api_key)
+    st.toast(f"Using model: {valid_model_name}")
+    
+    llm = ChatGoogleGenerativeAI(model=valid_model_name, google_api_key=google_api_key)
     
     agent = initialize_agent(
         tools, 
